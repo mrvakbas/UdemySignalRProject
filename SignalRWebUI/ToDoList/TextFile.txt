@@ -1,0 +1,2 @@
+﻿ProgressBar İstatistik
+Arama İşlemi - Search
