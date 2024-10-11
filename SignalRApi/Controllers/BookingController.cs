@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using AutoMapper;
+using FluentValidation;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using SignalR.BusinessLayer.Abstract;
 using SignalR.DtoLayer.BookingDto;
@@ -11,31 +13,32 @@ namespace SignalRApi.Controllers
     public class BookingController : ControllerBase
     {
         private readonly IBookingService _bookingService;
-        public BookingController(IBookingService bookingService)
+        private readonly IMapper _mapper;
+        private readonly IValidator<CreateBookingDto> _validator;
+        public BookingController(IBookingService bookingService, IMapper mapper, IValidator<CreateBookingDto> validator)
         {
             _bookingService = bookingService;
+            _mapper = mapper;
+            _validator = validator;
         }
 
         [HttpGet]
         public IActionResult BookingList()
         {
             var values = _bookingService.TGetListAll();
-            return Ok(values);
+            return Ok(_mapper.Map<List<ResultBookingDto>>(values));
         }
 
         [HttpPost]
         public IActionResult CreateBooking(CreateBookingDto createBookingDto)
         {
-            Booking booking = new Booking()
+            var validationResult = _validator.Validate(createBookingDto);
+            if (!validationResult.IsValid)
             {
-                Mail = createBookingDto.Mail,
-                Date = createBookingDto.Date,
-                Name = createBookingDto.Name,
-                PersonCount = createBookingDto.PersonCount,
-                Phone = createBookingDto.Phone,
-                Description = createBookingDto.Description
-            };
-            _bookingService.TAdd(booking);
+                return BadRequest(validationResult.Errors);
+            }
+            var values = _mapper.Map<Booking>(createBookingDto);
+            _bookingService.TAdd(values);
             return Ok("Rezervasyon Yapıldı");
         }
 
@@ -50,16 +53,8 @@ namespace SignalRApi.Controllers
         [HttpPut]
         public IActionResult UpdateBooking(UpdateBookingDto updateBookingDto) 
         {
-            Booking booking = new Booking()
-            {
-                Mail = updateBookingDto.Mail,
-                BookingID = updateBookingDto.BookingID,
-                Name = updateBookingDto.Name,
-                PersonCount = updateBookingDto.PersonCount,
-                Phone = updateBookingDto.Phone,
-                Date = updateBookingDto.Date
-            };
-            _bookingService.TUpdate(booking);
+            var value = _mapper.Map<Booking>(updateBookingDto);
+            _bookingService.TUpdate(value);
             return Ok("Rezervasyon Güncellendi");
         }
 
@@ -67,7 +62,7 @@ namespace SignalRApi.Controllers
         public IActionResult GetBooking(int id)
         {
             var value = _bookingService.TGetByID(id);
-            return Ok(value);
+            return Ok(_mapper.Map<GetBookingDto>(value));
         }
 
         [HttpGet("BookingStatusApproved/{id}")]
